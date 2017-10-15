@@ -3,6 +3,12 @@
 
 # build files
 build/
+CMakeCache.*
+CMakeFiles
+ExtendedKF
+Makefile
+cmake_install.cmake
+compile_commands.json
 
 # editor config
 .vscode/
