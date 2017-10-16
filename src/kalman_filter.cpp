@@ -72,9 +72,10 @@ void KalmanFilter::UpdateEKF(const Eigen::VectorXd &z) {
   float vx = x_(2);
   float vy = x_(3);
   VectorXd xp(3);
+  const float eps = std::numeric_limits<float>::epsilon();
   float rho = sqrt(px * px + py * py);
-  float phi = atan2(py, px);
-  float rho_dot = (px * vx + py * vy) / std::max(rho,  std::numeric_limits<float>::epsilon());
+  float phi = (px == 0.f && py==0.f) ? 0 : atan2(py, px);
+  float rho_dot = (px * vx + py * vy) / std::max(rho, eps);
   xp << rho,
         phi,
         rho_dot;
