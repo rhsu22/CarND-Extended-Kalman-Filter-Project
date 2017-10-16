@@ -43,12 +43,8 @@ MatrixXd Tools::CalculateJacobian(const VectorXd& x_state) {
   float vx = x_state(2);
   float vy = x_state(3);
 
-  float d0 = (px * px + py * py);
-  if (d0 < 0.0001f) {
-    cout << "Divided by a really small number, returning initialized Hj\n";
-    return Hj;
-  }
-
+  const float eps = std::numeric_limits<float>::epsilon();
+  float d0 = std::max(px * px + py * py, eps);
   float d1 = sqrt(d0);
   Hj << px/d1, py/d1, 0.f, 0.f,
         -py/d0, px/d0, 0.f, 0.f,

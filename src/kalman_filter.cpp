@@ -1,4 +1,5 @@
 #include "kalman_filter.h"
+#include <limits>
 #include <math.h>
 
 using Eigen::MatrixXd;
@@ -28,13 +29,8 @@ void KalmanFilter::Predict() {
 	P_ = F_ * P_ * Ft + Q_;
 }
 
-void KalmanFilter::Update(const VectorXd &z) {
-  /**
-  TODO:
-    * update the state by using Kalman Filter equations
-  */
-	VectorXd y = z - H_ * x_;
-	MatrixXd Ht = H_.transpose();
+void KalmanFilter::UpdateCommon(const VectorXd &y) {
+  MatrixXd Ht = H_.transpose();
 	MatrixXd S = H_ * P_ * Ht + R_;
 	MatrixXd Si = S.inverse();
 	MatrixXd PHt = P_ * Ht;
@@ -44,10 +40,29 @@ void KalmanFilter::Update(const VectorXd &z) {
 	x_ = x_ + (K * y);
 	long x_size = x_.size();
 	MatrixXd I = MatrixXd::Identity(x_size, x_size);
-	P_ = (I - K * H_) * P_;
+	P_ -= K * H_ * P_;
 }
 
-void KalmanFilter::UpdateEKF(const VectorXd &z) {
+void KalmanFilter::Update(const VectorXd &z) {
+  /**
+  TODO:
+    * update the state by using Kalman Filter equations
+  */
+	VectorXd y = z - H_ * x_;
+	UpdateCommon(y);
+}
+
+float normalizeAngle(double phi) {
+  while (phi < -M_PI) {
+    phi += 2 * M_PI;
+  }
+  while (phi > M_PI) {
+    phi -= 2 * M_PI;
+  }
+  return phi;
+}
+
+void KalmanFilter::UpdateEKF(const Eigen::VectorXd &z) {
   /**
   TODO:
     * update the state by using Extended Kalman Filter equations
@@ -57,26 +72,16 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   float vx = x_(2);
   float vy = x_(3);
   VectorXd xp(3);
-  xp << sqrt(px*px + py*py),
-        atan2(py, px),
-        (px*vx +py*vy) / (sqrt(px*px + py*py));
-  VectorXd y = z - xp;
-  // Modify theta range
-  while (y(1) < -M_PI) {
-    y(1) += 2 * M_PI;
-  }
-  while (y(1) > M_PI) {
-    y(1) -= 2 * M_PI;
-  }
-	MatrixXd Ht = H_.transpose();
-	MatrixXd S = H_ * P_ * Ht + R_;
-	MatrixXd Si = S.inverse();
-	MatrixXd PHt = P_ * Ht;
-	MatrixXd K = PHt * Si;
+  float rho = sqrt(px * px + py * py);
+  float phi = atan2(py, px);
+  float rho_dot = (px * vx + py * vy) / std::max(rho,  std::numeric_limits<float>::epsilon());
+  xp << rho,
+        phi,
+        rho_dot;
 
-	//new estimate
-	x_ = x_ + (K * y);
-	long x_size = x_.size();
-	MatrixXd I = MatrixXd::Identity(x_size, x_size);
-	P_ = (I - K * H_) * P_;
+  VectorXd y = z - xp;
+  // Modify phi range
+  y(1) = normalizeAngle(y(1));
+
+	UpdateCommon(y);
 }
